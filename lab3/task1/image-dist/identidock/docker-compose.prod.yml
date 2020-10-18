@@ -1,18 +1,58 @@
-identidock:
-  build: .
-  ports:
-   - "9090:9090"
-   - "9191:9191"   
-  environment:
-    ENV: PROD 
-  volumes:
-    - ./app:/app
-  links:
-    - dnmonster
-    - redis
+version: '3.3'
 
-dnmonster:
-  image: amouat/dnmonster:1.0
+services: 
+  identidock:
+    build: .
+    ports:
+      - "9090:9090"
+      - "9191:9191"   
+    environment:
+      ENV: PROD 
+    volumes:
+      - ./app:/app
+    links:
+      - dnmonster
+      - redis
+      - grafana
+      - influxdb
+      - telegraf
 
-redis:
-  image: redis:3.0
+  dnmonster:
+    image: amouat/dnmonster:1.0
+
+  redis:
+    image: redis:3.0
+
+  grafana:
+    container_name: grafana
+    image: grafana/grafana:7.2.1-ubuntu
+    ports: 
+      - "3000:3000" 
+    links: 
+      - influxdb
+    volumes: 
+      - ./grafana/data:/var/lib/grafana
+
+  influxdb:
+    container_name: influxdb
+    image: influxdb:1.0.2
+    ports: 
+      - "8083:8083"
+      - "8086:8086"
+    volumes: 
+      - ./influxdb:/var/lib/influxdb
+    restart: always
+
+  telegraf:
+    container_name: telegraf
+    image: telegraf:1.3.3
+    links: 
+      - influxdb
+    volumes:
+      - ./telegraf.conf:/etc/telegraf/telegraf.conf:ro
+    depends_on:
+      - influxdb
+    links:
+      - influxdb
+    environment:
+      INFLUXDB_URL: http://influxdb:8086
